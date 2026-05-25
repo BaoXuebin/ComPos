@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(npm create *)",
+      "Bash(npm install *)",
+      "Bash(npx shadcn@latest *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:5174)",
+      "Bash(netstat -ano)",
+      "Bash(awk '{print $5}')",
+      "Bash(xargs -I{} taskkill -PID {} -F)",
+      "Bash(npx create-vite@5 web --template react-ts)",
+      "Bash(npx shadcn-ui@latest init -d --force)",
+      "Bash(npx shadcn@3.0.0 init -d --force)",
+      "Bash(npx vite *)",
+      "Bash(npm ls *)",
+      "Bash(timeout 5 npx tsx src/index.ts)",
+      "Bash(npx tsx *)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(lsof -i:3001)",
+      "Bash(taskkill *)",
+      "Bash(cmd *)",
+      "Bash(npx shadcn@3.0.0 init --defaults)",
+      "Bash(npx shadcn@3.0.0 add button input card badge progress separator dialog -y)",
+      "Bash(npx shadcn@3.0.0 add button input card badge progress separator dialog --overwrite)",
+      "Bash(python3 -c 'import urllib.parse; print\\(urllib.parse.quote\\(\"郑州市南三环万盟电商园\"\\)\\)')",
+      "Bash(curl -s \"https://api.map.baidu.com/geocoding/v3/?ak=opxBfsAEm4idp7jM5N5ru0CHQ0YcGkOe&address=$\\(python3 -c 'import urllib.parse; print\\(urllib.parse.quote\\(\"郑州市南三环万盟电商园\"\\)\\)'\\)&output=json\")",
+      "Bash(curl -sI \"https://api.map.baidu.com/api?v=1.0&type=webgl&ak=opxBfsAEm4idp7jM5N5ru0CHQ0YcGkOe\")",
+      "Bash(curl *)",
+      "Bash(python3 -c 'import urllib.parse; print\\(urllib.parse.quote\\(\"郑州市管城回族区文兴路7号\"\\)\\)')",
+      "Bash(git rm *)",
+      "Bash(git add *)"
+    ]
+  }
+}
