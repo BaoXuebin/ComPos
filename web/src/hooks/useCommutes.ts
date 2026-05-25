@@ -7,6 +7,7 @@ export function useCommutes() {
     queryKey: ["commutes"],
     queryFn: api.getCommutes,
     initialData: {} as Record<string, CommuteEntry>,
+    staleTime: 0,
   })
 }
 
