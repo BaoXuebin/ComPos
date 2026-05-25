@@ -17,23 +17,14 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build backend image
+      - name: Build image
         run: |
-          docker build -f Dockerfile.backend \
-            -t ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/compos-backend:${{ github.sha }} \
-            -t ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/compos-backend:latest \
-            .
-
-      - name: Build web image
-        run: |
-          docker build -f Dockerfile.web \
-            -t ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/compos-web:${{ github.sha }} \
-            -t ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/compos-web:latest \
+          docker build \
+            -t ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/compos:${{ github.sha }} \
+            -t ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/compos:latest \
             .
 
       - name: Push images
         run: |
-          docker push ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/compos-backend:${{ github.sha }}
-          docker push ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/compos-backend:latest
-          docker push ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/compos-web:${{ github.sha }}
-          docker push ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/compos-web:latest
+          docker push ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/compos:${{ github.sha }}
+          docker push ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/compos:latest

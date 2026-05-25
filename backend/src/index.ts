@@ -1,3 +1,4 @@
+import path from "path"
 import express from "express"
 import cors from "cors"
 import { createServer } from "http"
@@ -30,6 +31,15 @@ app.use("/api/settings", settingsRouter)
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() })
 })
+
+// Serve frontend static files in production
+if (config.publicDir) {
+  app.use(express.static(config.publicDir))
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api/")) return next()
+    res.sendFile(path.join(config.publicDir, "index.html"))
+  })
+}
 
 // Socket.IO
 setupSocketIO(httpServer)

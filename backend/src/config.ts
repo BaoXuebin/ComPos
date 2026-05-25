@@ -7,4 +7,5 @@ export const config = {
   port: parseInt(process.env.PORT || "3001"),
   corsOrigin: process.env.CORS_ORIGIN || "http://localhost:5173",
   dataDir: path.resolve(__dirname, "..", "data"),
+  publicDir: process.env.PUBLIC_DIR || "",
 }
