@@ -25,7 +25,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     queryKey: ["settings"],
     queryFn: api.getSettings,
     staleTime: 0,
-    initialData: { amapKey: "", amapSecurityCode: "", amapServiceKey: "", deepseekApiKey: "" },
+    initialData: { amapKey: "", amapSecurityCode: "", amapServiceKey: "", deepseekApiKey: "", analysisPrompt: "" },
   })
   const updateMutation = useMutation({
     mutationFn: api.updateSettings,

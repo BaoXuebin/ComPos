@@ -12,8 +12,8 @@ export function useCandidates() {
 export function useCreateCandidate() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ name, address }: { name: string; address: string }) =>
-      api.createCandidate(name, address),
+    mutationFn: ({ name, address, rent }: { name: string; address: string; rent?: number | null }) =>
+      api.createCandidate(name, address, rent),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["candidates"] }),
   })
 }

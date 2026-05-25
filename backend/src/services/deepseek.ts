@@ -38,7 +38,7 @@ export function buildPrompt(
         ? { avgDist: Math.round(cs.totalDist / cs.count), avgDur: Math.round(cs.totalDur / cs.count / 60), coverage: `${cs.count}/${employees.length}` }
         : { avgDist: 0, avgDur: 0, coverage: `0/${employees.length}` }
     }
-    return { id: c.id, name: c.name, address: c.address, location: `[${c.lng}, ${c.lat}]`, commuteModes: modes }
+    return { id: c.id, name: c.name, address: c.address, rent: c.rent, location: `[${c.lng}, ${c.lat}]`, commuteModes: modes }
   })
 
   return {
@@ -62,10 +62,10 @@ export async function streamDeepSeekAnalysis(
   const data = buildPrompt(employees, candidates, commutes)
   let fullContent = ""
 
-  const systemPrompt = `你是一位专业的办公选址分析师。请根据员工家庭地址和候选办公地点的通勤数据进行评估：
+  const defaultPrompt = `你是一位专业的办公选址分析师。请根据员工家庭地址、候选办公地点的通勤数据和租金进行评估：
 
-1. 逐一评估每个候选地点的通勤便捷度
-2. 从1-10分给每个候选地点打分
+1. 逐一评估每个候选地点的通勤便捷度和租金性价比
+2. 从1-10分给每个候选地点打分（综合考虑通勤便利度和租金成本）
 3. 推荐最优办公选址地理区域（中心坐标+搜索半径）
 
 最后用JSON格式输出：
@@ -73,6 +73,8 @@ export async function streamDeepSeekAnalysis(
 {"scores":{"candidateId":{"score":8.5,"summary":"评价"}},"recommendedArea":{"center":[lng,lat],"radius":3000,"description":"推荐理由","overlayType":"circle"}}
 \`\`\`
 仅输出JSON。`
+
+  const systemPrompt = settings.analysisPrompt?.trim() || defaultPrompt
 
   const response = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",

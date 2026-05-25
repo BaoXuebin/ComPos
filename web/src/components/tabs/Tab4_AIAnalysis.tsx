@@ -1,16 +1,18 @@
 import { useState, useRef, useCallback, useEffect } from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query"
 import { useEmployees } from "@/hooks/useEmployees"
 import { useCandidates } from "@/hooks/useCandidates"
 import { useCommutes } from "@/hooks/useCommutes"
 import { useAnalysis, useClearAnalysis } from "@/hooks/useAnalysis"
 import { getSocket } from "@/lib/socket"
+import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { TRAVEL_MODES, type CommuteEntry, type TravelMode } from "@/types"
 import { showCandidateRoutes, clearRouteOverlays } from "@/components/map/MapContainer"
-import { Sparkles, Copy, Loader2, ChevronDown, ChevronUp, ExternalLink, Trash2 } from "lucide-react"
+import { Sparkles, Copy, Loader2, ChevronDown, ChevronUp, ExternalLink, Trash2, Settings } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 
 export function Tab4_AIAnalysis() {
   const { data: employees = [] } = useEmployees()
@@ -27,6 +29,20 @@ export function Tab4_AIAnalysis() {
   const [reasoningCollapsed, setReasoningCollapsed] = useState(false)
   const [activeRouteCand, setActiveRouteCand] = useState<string | null>(null)
   const reasoningRef = useRef<HTMLDivElement>(null)
+
+  const { data: settings } = useQuery({
+    queryKey: ["settings"],
+    queryFn: api.getSettings,
+    staleTime: 0,
+    initialData: { amapKey: "", amapSecurityCode: "", amapServiceKey: "", deepseekApiKey: "", analysisPrompt: "" },
+  })
+  const updateSettingsMutation = useMutation({
+    mutationFn: api.updateSettings,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["settings"] }),
+  })
+  const [promptEditing, setPromptEditing] = useState(false)
+  const [promptText, setPromptText] = useState("")
+  const [promptSaving, setPromptSaving] = useState(false)
 
   const scrollToBottom = useCallback(() => {
     if (reasoningRef.current) reasoningRef.current.scrollTop = reasoningRef.current.scrollHeight
@@ -109,6 +125,30 @@ export function Tab4_AIAnalysis() {
     ? Object.entries(analysis.scores).sort((a, b) => b[1].score - a[1].score)[0]?.[0]
     : null
 
+  const openPromptEditor = () => {
+    const defaultPrompt = `你是一位专业的办公选址分析师。请根据员工家庭地址、候选办公地点的通勤数据和租金进行评估：
+
+1. 逐一评估每个候选地点的通勤便捷度和租金性价比
+2. 从1-10分给每个候选地点打分（综合考虑通勤便利度和租金成本）
+3. 推荐最优办公选址地理区域（中心坐标+搜索半径）
+
+最后用JSON格式输出：
+\`\`\`json
+{"scores":{"candidateId":{"score":8.5,"summary":"评价"}},"recommendedArea":{"center":[lng,lat],"radius":3000,"description":"推荐理由","overlayType":"circle"}}
+\`\`\`
+仅输出JSON。`
+    setPromptText(settings.analysisPrompt || defaultPrompt)
+    setPromptEditing(true)
+  }
+  const handleSavePrompt = async () => {
+    setPromptSaving(true)
+    try {
+      await updateSettingsMutation.mutateAsync({ analysisPrompt: promptText })
+      setPromptEditing(false)
+    } catch { /* ignore */ }
+    setPromptSaving(false)
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-6 pt-6 pb-4">
@@ -139,6 +179,10 @@ export function Tab4_AIAnalysis() {
             <Trash2 className="w-3.5 h-3.5 mr-1" /> 清除分析
           </Button>
         )}
+        <button onClick={openPromptEditor} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-1">
+          <Settings className="w-3 h-3" />
+          {settings.analysisPrompt ? "修改提示词" : "自定义提示词"}
+        </button>
         {!hasCommutes && !streaming && (
           <span className="text-xs text-muted-foreground">请先在「通勤对比」中计算路线数据</span>
         )}
@@ -246,6 +290,29 @@ export function Tab4_AIAnalysis() {
           </div>
         </div>
       )}
+
+      <Dialog open={promptEditing} onOpenChange={(v) => { if (!v) setPromptEditing(false) }}>
+        <DialogContent className="w-[560px] max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="w-4 h-4" /> 自定义分析提示词
+            </DialogTitle>
+          </DialogHeader>
+          <textarea
+            value={promptText}
+            onChange={(e) => setPromptText(e.target.value)}
+            rows={12}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-y"
+          />
+          <p className="text-xs text-muted-foreground">修改后点击保存即可生效，下次分析将使用自定义提示词</p>
+          <DialogFooter>
+            <Button variant="ghost" size="sm" onClick={() => setPromptEditing(false)}>取消</Button>
+            <Button size="sm" onClick={handleSavePrompt} disabled={promptSaving}>
+              {promptSaving ? "保存中..." : "保存"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

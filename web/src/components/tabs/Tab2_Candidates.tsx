@@ -19,30 +19,36 @@ export function Tab2_Candidates() {
 
   const [name, setName] = useState("")
   const [address, setAddress] = useState("")
+  const [rent, setRent] = useState("")
   const [geocodingId, setGeocodingId] = useState<string | null>(null)
 
   // Dialog editing
   const [editTarget, setEditTarget] = useState<Candidate | null>(null)
   const [dlgName, setDlgName] = useState("")
   const [dlgAddress, setDlgAddress] = useState("")
+  const [dlgRent, setDlgRent] = useState("")
 
   const openEditDialog = (cand: Candidate) => {
     setEditTarget(cand)
     setDlgName(cand.name)
     setDlgAddress(cand.address)
+    setDlgRent(cand.rent != null ? String(cand.rent) : "")
   }
 
   const saveDialog = () => {
     if (!editTarget || !dlgName.trim() || !dlgAddress.trim()) return
-    updateMutation.mutate({ id: editTarget.id, data: { name: dlgName.trim(), address: dlgAddress.trim() } })
+    const rentVal = dlgRent.trim() ? Number(dlgRent.trim()) : null
+    updateMutation.mutate({ id: editTarget.id, data: { name: dlgName.trim(), address: dlgAddress.trim(), rent: isNaN(rentVal as number) ? null : rentVal } })
     setEditTarget(null)
   }
 
   const handleAdd = () => {
     if (!name.trim() || !address.trim()) return
-    createMutation.mutate({ name: name.trim(), address: address.trim() })
+    const rentVal = rent.trim() ? Number(rent.trim()) : null
+    createMutation.mutate({ name: name.trim(), address: address.trim(), rent: isNaN(rentVal as number) ? null : rentVal })
     setName("")
     setAddress("")
+    setRent("")
   }
 
   const handleGeocode = async (cand: Candidate) => {
@@ -88,6 +94,10 @@ export function Tab2_Candidates() {
             <label className="block text-xs text-muted-foreground mb-1">详细地址</label>
             <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="北京市朝阳区国贸大厦" onKeyDown={(e) => e.key === "Enter" && handleAdd()} className="h-9" />
           </div>
+          <div className="w-28">
+            <label className="block text-xs text-muted-foreground mb-1">月租金(元)</label>
+            <Input value={rent} onChange={(e) => setRent(e.target.value)} placeholder="可选" type="number" className="h-9" />
+          </div>
           <Button onClick={handleAdd} size="sm">
             <Plus className="w-4 h-4 mr-1" /> 添加
           </Button>
@@ -126,6 +136,11 @@ export function Tab2_Candidates() {
                   <div className="text-sm font-medium text-foreground truncate">{cand.name}</div>
                   <div className="text-xs text-muted-foreground truncate">{cand.address}</div>
                 </div>
+                {cand.rent != null && (
+                  <Badge className="bg-blue-50 text-blue-600 border-blue-200 text-xs h-5 shrink-0 font-mono">
+                    ¥{cand.rent.toLocaleString()}/月
+                  </Badge>
+                )}
                 <div className="flex items-center gap-1.5 shrink-0">
                   {cand.geocoded ? (
                     <Badge className="bg-green-50 text-green-600 border-green-200 text-xs h-5 font-mono">
@@ -167,6 +182,10 @@ export function Tab2_Candidates() {
             <div>
               <label className="block text-xs text-muted-foreground mb-1">详细地址</label>
               <Input value={dlgAddress} onChange={(e) => setDlgAddress(e.target.value)} placeholder="详细地址" className="h-9" />
+            </div>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">月租金(元)</label>
+              <Input value={dlgRent} onChange={(e) => setDlgRent(e.target.value)} placeholder="可选" type="number" className="h-9" />
             </div>
           </div>
           <DialogFooter>

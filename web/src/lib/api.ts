@@ -25,8 +25,8 @@ export const api = {
     request<{ success: boolean }>(`/employees/${id}`, { method: "DELETE" }),
 
   getCandidates: () => request<Candidate[]>("/candidates"),
-  createCandidate: (name: string, address: string) =>
-    request<Candidate>("/candidates", { method: "POST", body: JSON.stringify({ name, address }) }),
+  createCandidate: (name: string, address: string, rent?: number | null) =>
+    request<Candidate>("/candidates", { method: "POST", body: JSON.stringify({ name, address, rent }) }),
   updateCandidate: (id: string, data: Partial<Candidate>) =>
     request<Candidate>(`/candidates/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteCandidate: (id: string) =>

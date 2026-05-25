@@ -1,5 +1,5 @@
 services:
-  projbot:
+  compos:
     container_name: compos
     image: registry.cn-qingdao.aliyuncs.com/xdbin/compos:${IMAGE_TAG:-latest}
     ports:
@@ -10,7 +10,7 @@ services:
       - ./data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/system"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

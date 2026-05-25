@@ -24,7 +24,18 @@ employeesRouter.put("/:id", (req, res) => {
   const idx = employees.findIndex((e) => e.id === req.params.id)
   if (idx === -1) return res.status(404).json({ error: "not found" })
 
-  employees[idx] = { ...employees[idx], ...req.body }
+  const existing = employees[idx]
+  const updates = { ...req.body }
+
+  // 地址变了就重置定位状态
+  if (updates.address && updates.address !== existing.address) {
+    updates.lng = null
+    updates.lat = null
+    updates.geocoded = false
+    updates.geocodeError = null
+  }
+
+  employees[idx] = { ...existing, ...updates }
   saveEmployees(employees)
   res.json(employees[idx])
 })

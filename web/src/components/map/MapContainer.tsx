@@ -3,7 +3,9 @@ import { useEmployees } from "@/hooks/useEmployees"
 import { useCandidates } from "@/hooks/useCandidates"
 import { useAnalysis } from "@/hooks/useAnalysis"
 import { loadAmapSDK, isAmapLoaded } from "@/lib/amap"
+import { useUIStore } from "@/store/useUIStore"
 import { cn } from "@/lib/utils"
+import { Maximize2, Minimize2 } from "lucide-react"
 
 let mapInstance: any = null
 let markersCache: any[] = []
@@ -75,6 +77,8 @@ export function MapContainer({ visible, filter = "employees" }: { visible: boole
   const { data: employees } = useEmployees()
   const { data: candidates } = useCandidates()
   const { data: analysis } = useAnalysis()
+  const mapFullscreen = useUIStore((s) => s.mapFullscreen)
+  const setMapFullscreen = useUIStore((s) => s.setMapFullscreen)
 
   // Load AMap SDK
   useEffect(() => {
@@ -94,8 +98,6 @@ export function MapContainer({ visible, filter = "employees" }: { visible: boole
       mapInstance = new window.AMap.Map(mapRef.current, {
         zoom: 11,
         center: [113.65, 34.76],
-        mapStyle: "amap://styles/normal",
-        features: ["bg", "road", "building"],
       })
       setReady(true)
     }
@@ -165,6 +167,13 @@ export function MapContainer({ visible, filter = "employees" }: { visible: boole
     }
   }, [employees, candidates, analysis, ready, filter])
 
+  // Resize on fullscreen toggle
+  useEffect(() => {
+    if (mapInstance && ready) {
+      setTimeout(() => mapInstance.resize(), 100)
+    }
+  }, [mapFullscreen])
+
   // Resize handler
   useEffect(() => {
     const handle = () => {
@@ -177,12 +186,21 @@ export function MapContainer({ visible, filter = "employees" }: { visible: boole
   }, [])
 
   return (
-    <div className={cn("w-[40%] min-w-[400px] bg-background relative overflow-hidden", !visible && "hidden")}>
+    <div className={cn("bg-background relative overflow-hidden", !visible && "hidden", mapFullscreen ? "flex-1" : "w-[40%] min-w-[400px]")}>
       <div ref={mapRef} className="w-full h-full" />
       {!ready && visible && (
         <div className="absolute inset-0 flex items-center justify-center bg-background">
           <div className="text-sm text-muted-foreground animate-pulse">地图加载中...</div>
         </div>
+      )}
+      {ready && (
+        <button
+          onClick={() => setMapFullscreen(!mapFullscreen)}
+          className="absolute top-3 right-3 z-10 p-1.5 rounded-md bg-background/80 backdrop-blur border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+          title={mapFullscreen ? "退出全屏" : "全屏查看"}
+        >
+          {mapFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+        </button>
       )}
     </div>
   )

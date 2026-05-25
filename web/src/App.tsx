@@ -16,6 +16,7 @@ function App() {
   const setActiveTab = useUIStore((s) => s.setActiveTab)
   const settingsOpen = useUIStore((s) => s.settingsOpen)
   const setSettingsOpen = useUIStore((s) => s.setSettingsOpen)
+  const mapFullscreen = useUIStore((s) => s.mapFullscreen)
 
   const showMap = MAP_VISIBLE_TABS.has(activeTab)
   const mapFilter = activeTab
@@ -38,9 +39,11 @@ function App() {
       <AppHeader onOpenSettings={() => setSettingsOpen(true)} />
       <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       <div className="flex flex-1 overflow-hidden">
-        <div className={`${showMap ? "w-[60%]" : "flex-1"} overflow-hidden bg-background`}>
-          {renderTab()}
-        </div>
+        {!mapFullscreen && (
+          <div className={`${showMap ? "w-[60%]" : "flex-1"} overflow-hidden bg-background`}>
+            {renderTab()}
+          </div>
+        )}
         <MapContainer visible={showMap} filter={mapFilter} />
       </div>
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />

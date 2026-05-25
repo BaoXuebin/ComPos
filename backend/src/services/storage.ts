@@ -72,6 +72,7 @@ const defaultSettings: AppSettings = {
   amapSecurityCode: "",
   amapServiceKey: "",
   deepseekApiKey: "",
+  analysisPrompt: "",
 }
 export function getSettings(): AppSettings {
   return readJSON<AppSettings>("settings.json", defaultSettings)

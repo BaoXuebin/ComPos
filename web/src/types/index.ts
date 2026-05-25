@@ -13,6 +13,7 @@ export interface Candidate {
   id: string
   name: string
   address: string
+  rent: number | null
   lng: number | null
   lat: number | null
   geocoded: boolean
@@ -57,6 +58,7 @@ export interface AppSettings {
   amapSecurityCode: string
   amapServiceKey: string
   deepseekApiKey: string
+  analysisPrompt: string
 }
 
 export interface GeocodeResult {

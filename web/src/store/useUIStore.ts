@@ -7,6 +7,8 @@ interface UIState {
   setActiveTab: (tab: TabId) => void
   settingsOpen: boolean
   setSettingsOpen: (open: boolean) => void
+  mapFullscreen: boolean
+  setMapFullscreen: (fullscreen: boolean) => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -14,4 +16,6 @@ export const useUIStore = create<UIState>((set) => ({
   setActiveTab: (activeTab) => set({ activeTab }),
   settingsOpen: false,
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+  mapFullscreen: false,
+  setMapFullscreen: (mapFullscreen) => set({ mapFullscreen }),
 }))

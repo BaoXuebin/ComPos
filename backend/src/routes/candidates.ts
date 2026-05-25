@@ -9,11 +9,11 @@ candidatesRouter.get("/", (_req, res) => {
 })
 
 candidatesRouter.post("/", (req, res) => {
-  const { name, address } = req.body
+  const { name, address, rent } = req.body
   if (!name || !address) return res.status(400).json({ error: "name and address are required" })
 
   const candidates = getCandidates()
-  const cand = { id: uuid(), name, address, lng: null, lat: null, geocoded: false, geocodeError: null }
+  const cand = { id: uuid(), name, address, rent: typeof rent === "number" ? rent : null, lng: null, lat: null, geocoded: false, geocodeError: null }
   candidates.push(cand)
   saveCandidates(candidates)
   res.status(201).json(cand)
@@ -24,7 +24,18 @@ candidatesRouter.put("/:id", (req, res) => {
   const idx = candidates.findIndex((c) => c.id === req.params.id)
   if (idx === -1) return res.status(404).json({ error: "not found" })
 
-  candidates[idx] = { ...candidates[idx], ...req.body }
+  const existing = candidates[idx]
+  const updates = { ...req.body }
+
+  // 地址变了就重置定位状态
+  if (updates.address && updates.address !== existing.address) {
+    updates.lng = null
+    updates.lat = null
+    updates.geocoded = false
+    updates.geocodeError = null
+  }
+
+  candidates[idx] = { ...existing, ...updates }
   saveCandidates(candidates)
   res.json(candidates[idx])
 })
