@@ -9,7 +9,7 @@ import { Tab2_Candidates } from "@/components/tabs/Tab2_Candidates"
 import { Tab3_CommuteComparison } from "@/components/tabs/Tab3_CommuteComparison"
 import { Tab4_AIAnalysis } from "@/components/tabs/Tab4_AIAnalysis"
 
-const MAP_VISIBLE_TABS: Set<TabId> = new Set(["candidates", "commute", "analysis"])
+const MAP_VISIBLE_TABS: Set<TabId> = new Set(["employees", "candidates", "commute", "analysis"])
 
 function App() {
   const activeTab = useUIStore((s) => s.activeTab)
@@ -18,6 +18,7 @@ function App() {
   const setSettingsOpen = useUIStore((s) => s.setSettingsOpen)
 
   const showMap = MAP_VISIBLE_TABS.has(activeTab)
+  const mapFilter = activeTab
 
   const renderTab = useCallback(() => {
     switch (activeTab) {
@@ -40,7 +41,7 @@ function App() {
         <div className={`${showMap ? "w-[60%]" : "flex-1"} overflow-hidden bg-background`}>
           {renderTab()}
         </div>
-        <MapContainer visible={showMap} />
+        <MapContainer visible={showMap} filter={mapFilter} />
       </div>
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>

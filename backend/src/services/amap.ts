@@ -62,12 +62,15 @@ export async function calculateRoute(
     const res = await fetch(url)
     const data = await res.json()
 
-    if (data.status === "1" && data.route?.paths?.length > 0) {
-      const route = data.route.paths[0]
-      return {
-        distance: parseInt(route.distance) || 0,
-        duration: parseInt(route.duration) || 0,
-        error: null,
+    if (data.status === "1") {
+      const route =
+        mode === "transit" ? data.route?.transits?.[0] : data.route?.paths?.[0]
+      if (route) {
+        return {
+          distance: parseInt(route.distance) || 0,
+          duration: parseInt(route.duration) || 0,
+          error: null,
+        }
       }
     }
 

@@ -6,3 +6,8 @@ export const analysisRouter = Router()
 analysisRouter.get("/", (_req, res) => {
   res.json(getAnalysis())
 })
+
+analysisRouter.delete("/", (_req, res) => {
+  saveAnalysis(null)
+  res.json({ success: true })
+})

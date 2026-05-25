@@ -1,15 +1,15 @@
 import { Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
+const APP_VERSION = "v0.1.0"
+
 export function AppHeader({ onOpenSettings }: { onOpenSettings: () => void }) {
   return (
     <header className="flex items-center justify-between h-14 px-6 border-b border-border bg-background shrink-0">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
-          C
-        </div>
-        <h1 className="text-lg font-semibold tracking-tight text-foreground">
-          公司选址通勤分析
+      <div className="flex items-center">
+        <h1 className="text-lg font-semibold tracking-tight text-foreground relative">
+          ComPos
+          <span className="absolute -top-1 -right-10 text-[10px] font-mono text-muted-foreground bg-muted rounded px-1 leading-tight">{APP_VERSION}</span>
         </h1>
       </div>
       <Button variant="ghost" size="icon" onClick={onOpenSettings}>

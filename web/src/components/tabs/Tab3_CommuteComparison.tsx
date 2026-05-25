@@ -4,12 +4,12 @@ import { useEmployees } from "@/hooks/useEmployees"
 import { useCandidates } from "@/hooks/useCandidates"
 import { useCommutes, useClearCommutes } from "@/hooks/useCommutes"
 import { getSocket } from "@/lib/socket"
-import { showRoutesOnMap, locateOnMap } from "@/components/map/MapContainer"
+import { showRoutesOnMap, locateOnMap, showCandidateRoutes, clearRouteOverlays } from "@/components/map/MapContainer"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
-import { TRAVEL_MODES, type TravelMode, type CommuteEntry } from "@/types"
+import { TRAVEL_MODES, type TravelMode, type CommuteEntry, type CommuteResult } from "@/types"
 import { Zap, RotateCcw, Medal, Car, Bus, Footprints, Bike } from "lucide-react"
 
 const MODE_ICONS: Record<TravelMode, typeof Car> = {
@@ -17,6 +17,13 @@ const MODE_ICONS: Record<TravelMode, typeof Car> = {
   transit: Bus,
   walking: Footprints,
   cycling: Bike,
+}
+
+const MODE_LABELS: Record<TravelMode, string> = {
+  driving: "驾车",
+  transit: "公交",
+  walking: "步行",
+  cycling: "骑行",
 }
 
 const DURATION_THRESHOLDS = { good: 30 * 60, medium: 60 * 60 }
@@ -41,6 +48,28 @@ function getHeatClass(value: number, thresholds: typeof DURATION_THRESHOLDS): st
   return "text-destructive"
 }
 
+function getBestResult(entry: CommuteEntry | undefined): { result: CommuteResult; mode: TravelMode } | null {
+  if (!entry) return null
+  let best: { result: CommuteResult; mode: TravelMode } | null = null
+  for (const m of TRAVEL_MODES) {
+    const r = entry[m.key]
+    if (r?.duration && r?.distance && !r.error) {
+      if (!best || r.duration < best.result.duration!) {
+        best = { result: r, mode: m.key }
+      }
+    }
+  }
+  return best
+}
+
+function getFirstError(entry: CommuteEntry | undefined): string | null {
+  if (!entry) return null
+  for (const m of TRAVEL_MODES) {
+    if (entry[m.key]?.error) return entry[m.key]!.error!
+  }
+  return null
+}
+
 function getMedalEmoji(rank: number): string {
   if (rank === 0) return "\u{1F947}"
   if (rank === 1) return "\u{1F948}"
@@ -55,30 +84,19 @@ export function Tab3_CommuteComparison() {
   const clearCommutesMutation = useClearCommutes()
   const qc = useQueryClient()
 
-  const [selectedModes, setSelectedModes] = useState<Set<TravelMode>>(new Set<TravelMode>(["driving", "transit"]))
   const [calculating, setCalculating] = useState(false)
   const [progress, setProgress] = useState({ completed: 0, total: 0, failed: 0 })
-  const [displayMode, setDisplayMode] = useState<TravelMode>("driving")
-  const [metricType, setMetricType] = useState<"duration" | "distance">("duration")
   const [error, setError] = useState<string | null>(null)
+  const [activeRouteCand, setActiveRouteCand] = useState<string | null>(null)
 
   const geocodedEmployees = employees.filter((e) => e.geocoded)
   const geocodedCandidates = candidates.filter((c) => c.geocoded)
-
-  const toggleMode = (mode: TravelMode) => {
-    setSelectedModes((prev) => {
-      const next = new Set(prev)
-      if (next.has(mode)) next.delete(mode)
-      else next.add(mode)
-      return next
-    })
-  }
 
   const handleCalculate = () => {
     setCalculating(true)
     setProgress({ completed: 0, total: 0, failed: 0 })
     setError(null)
-    getSocket().emit("commute:calculate", { modes: Array.from(selectedModes) })
+    getSocket().emit("commute:calculate")
   }
 
   const handleCancel = () => {
@@ -112,23 +130,52 @@ export function Tab3_CommuteComparison() {
     if (emp.lng && emp.lat && cand.lng && cand.lat) {
       showRoutesOnMap(
         { lng: emp.lng, lat: emp.lat, label: emp.name },
-        { lng: cand.lng, lat: cand.lat, label: cand.name },
-        displayMode
+        { lng: cand.lng, lat: cand.lat, label: cand.name }
       )
     }
   }
+
+  const handleRankingClick = (cand: typeof geocodedCandidates[0]) => {
+    if (activeRouteCand === cand.id) {
+      clearRouteOverlays()
+      setActiveRouteCand(null)
+      return
+    }
+    if (!cand.lng || !cand.lat) return
+    const trips = geocodedEmployees
+      .filter((emp) => emp.lng && emp.lat)
+      .map((emp) => {
+        const best = bestResults.get(`${emp.id}_${cand.id}`)
+        return { lng: emp.lng!, lat: emp.lat!, bestMode: best?.mode || "driving" }
+      })
+    showCandidateRoutes(cand.lng, cand.lat, trips)
+    setActiveRouteCand(cand.id)
+  }
+
+  // Best results per pair (cached for rankings + table)
+  const bestResults = useMemo(() => {
+    const map = new Map<string, { duration: number; distance: number; mode: TravelMode }>()
+    for (const emp of geocodedEmployees) {
+      for (const cand of geocodedCandidates) {
+        const key = `${emp.id}_${cand.id}`
+        const best = getBestResult(commutes[key])
+        if (best) {
+          map.set(key, { duration: best.result.duration!, distance: best.result.distance!, mode: best.mode })
+        }
+      }
+    }
+    return map
+  }, [commutes, geocodedEmployees, geocodedCandidates])
 
   const rankings = useMemo(() => {
     const scores: { candidateId: string; name: string; avgDuration: number; avgDistance: number; count: number }[] = []
     for (const cand of geocodedCandidates) {
       let totalDur = 0, totalDist = 0, count = 0
       for (const emp of geocodedEmployees) {
-        const key = `${emp.id}_${cand.id}`
-        const entry = commutes[key]
-        const result = entry?.[displayMode]
-        if (result?.duration && result?.distance) {
-          totalDur += result.duration
-          totalDist += result.distance
+        const best = bestResults.get(`${emp.id}_${cand.id}`)
+        if (best) {
+          totalDur += best.duration
+          totalDist += best.distance
           count++
         }
       }
@@ -138,52 +185,18 @@ export function Tab3_CommuteComparison() {
     }
     scores.sort((a, b) => a.avgDuration - b.avgDuration)
     return scores
-  }, [geocodedCandidates, geocodedEmployees, commutes, displayMode])
+  }, [geocodedCandidates, geocodedEmployees, bestResults])
 
-  const canCalculate = geocodedEmployees.length > 0 && geocodedCandidates.length > 0 && selectedModes.size > 0
+  const canCalculate = geocodedEmployees.length > 0 && geocodedCandidates.length > 0
 
   return (
     <div className="flex flex-col h-full">
       <div className="px-6 pt-6 pb-4">
         <h2 className="text-lg font-semibold text-foreground mb-1">通勤对比</h2>
-        <p className="text-sm text-muted-foreground">计算每位员工到各候选地点的通勤时间与距离</p>
+        <p className="text-sm text-muted-foreground">计算每位员工到各候选地点的通勤时间与距离，自动展示最快方案</p>
       </div>
 
       <div className="px-6 pb-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground mr-1">计算方式:</span>
-          {TRAVEL_MODES.map((m) => {
-            const Icon = MODE_ICONS[m.key]
-            const selected = selectedModes.has(m.key)
-            return (
-              <button key={m.key} onClick={() => toggleMode(m.key)} disabled={calculating}
-                className={cn(
-                  "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
-                  selected ? "bg-accent border-primary text-primary" : "bg-card border-border text-muted-foreground hover:border-primary/30"
-                )}
-              >
-                <Icon className="w-3.5 h-3.5" />{m.label}
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">查看:</span>
-          {TRAVEL_MODES.map((m) => (
-            <button key={m.key} onClick={() => setDisplayMode(m.key)}
-              className={cn("text-xs px-2 py-0.5 rounded transition-colors", displayMode === m.key ? "text-primary bg-accent" : "text-muted-foreground hover:text-foreground")}
-            >{m.label}</button>
-          ))}
-          <Separator className="h-4" />
-          <button onClick={() => setMetricType("duration")}
-            className={cn("text-xs px-2 py-0.5 rounded transition-colors", metricType === "duration" ? "text-primary bg-accent" : "text-muted-foreground hover:text-foreground")}
-          >时间</button>
-          <button onClick={() => setMetricType("distance")}
-            className={cn("text-xs px-2 py-0.5 rounded transition-colors", metricType === "distance" ? "text-primary bg-accent" : "text-muted-foreground hover:text-foreground")}
-          >距离</button>
-        </div>
-
         <div className="flex items-center gap-2">
           <Button onClick={handleCalculate} disabled={!canCalculate || calculating} size="sm">
             <Zap className="w-3.5 h-3.5 mr-1" />{calculating ? "计算中..." : "计算全部路线"}
@@ -222,7 +235,7 @@ export function Tab3_CommuteComparison() {
                 <tr className="border-b border-border">
                   <th className="text-left py-2 px-2 text-muted-foreground font-medium sticky left-0 bg-background z-10">员工 \ 候选</th>
                   {geocodedCandidates.map((c) => (
-                    <th key={c.id} onClick={() => locateOnMap(c.lng!, c.lat!)} className="text-center py-2 px-3 text-foreground font-medium min-w-[90px] cursor-pointer hover:text-primary transition-colors">{c.name}</th>
+                    <th key={c.id} onClick={() => locateOnMap(c.lng!, c.lat!)} className="text-center py-2 px-3 text-foreground font-medium min-w-[100px] cursor-pointer hover:text-primary transition-colors">{c.name}</th>
                   ))}
                 </tr>
               </thead>
@@ -231,21 +244,27 @@ export function Tab3_CommuteComparison() {
                   <tr key={emp.id} className="border-b border-border/50 hover:bg-accent/50">
                     <td onClick={() => locateOnMap(emp.lng!, emp.lat!)} className="py-2 px-2 text-muted-foreground font-medium sticky left-0 bg-background z-10 cursor-pointer hover:text-primary transition-colors">{emp.name}</td>
                     {geocodedCandidates.map((cand) => {
-                      const key = `${emp.id}_${cand.id}`
-                      const entry = commutes[key]
-                      const result = entry?.[displayMode]
-                      const value = result?.[metricType]
-                      const isError = result?.error
+                      const pairKey = `${emp.id}_${cand.id}`
+                      const best = bestResults.get(pairKey)
+                      const errMsg = !best ? getFirstError(commutes[pairKey]) : null
                       return (
-                        <td key={cand.id} onClick={() => result && !isError && handleCellClick(emp, cand)}
-                          className={cn("text-center py-2 px-3 cursor-pointer transition-colors rounded", result && !isError && "hover:bg-accent")}
+                        <td key={cand.id} onClick={() => best && handleCellClick(emp, cand)}
+                          className={cn("text-center py-2 px-3 cursor-pointer transition-colors rounded", best && "hover:bg-accent")}
                         >
-                          {isError ? (
-                            <span className="text-muted-foreground text-xs">-</span>
-                          ) : value ? (
-                            <span className={cn("font-mono", getHeatClass(value, metricType === "duration" ? DURATION_THRESHOLDS : DISTANCE_THRESHOLDS))}>
-                              {metricType === "duration" ? formatDuration(value) : formatDistance(value)}
-                            </span>
+                          {best ? (
+                            <div className="space-y-0.5">
+                              <div className="flex items-center justify-center gap-1">
+                                {(() => { const Icon = MODE_ICONS[best.mode]; return <Icon className="w-3 h-3 text-muted-foreground shrink-0" /> })()}
+                                <span className={cn("font-mono font-medium", getHeatClass(best.duration, DURATION_THRESHOLDS))}>
+                                  {formatDuration(best.duration)}
+                                </span>
+                              </div>
+                              <div className={cn("font-mono", getHeatClass(best.distance, DISTANCE_THRESHOLDS))}>
+                                {formatDistance(best.distance)}
+                              </div>
+                            </div>
+                          ) : errMsg ? (
+                            <span className="text-muted-foreground text-[11px] leading-tight" title={errMsg}>{errMsg}</span>
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
@@ -257,19 +276,24 @@ export function Tab3_CommuteComparison() {
                 <tr className="border-t border-primary/30 bg-accent/30 font-medium">
                   <td className="py-2 px-2 text-primary sticky left-0 bg-background z-10">平均</td>
                   {geocodedCandidates.map((cand) => {
-                    let total = 0, count = 0
+                    let totalDur = 0, totalDist = 0, count = 0
                     for (const emp of geocodedEmployees) {
-                      const key = `${emp.id}_${cand.id}`
-                      const val = commutes[key]?.[displayMode]?.[metricType]
-                      if (val != null) { total += val; count++ }
+                      const best = bestResults.get(`${emp.id}_${cand.id}`)
+                      if (best) {
+                        totalDur += best.duration
+                        totalDist += best.distance
+                        count++
+                      }
                     }
-                    const avg = count > 0 ? total / count : null
+                    const avgDur = count > 0 ? totalDur / count : null
+                    const avgDist = count > 0 ? totalDist / count : null
                     return (
                       <td key={cand.id} className="text-center py-2 px-3">
-                        {avg != null ? (
-                          <span className={cn("font-mono", getHeatClass(avg, metricType === "duration" ? DURATION_THRESHOLDS : DISTANCE_THRESHOLDS))}>
-                            {metricType === "duration" ? formatDuration(avg) : formatDistance(avg)}
-                          </span>
+                        {avgDur != null ? (
+                          <div className="space-y-0.5">
+                            <div className={cn("font-mono", getHeatClass(avgDur, DURATION_THRESHOLDS))}>{formatDuration(avgDur)}</div>
+                            <div className={cn("font-mono", getHeatClass(avgDist!, DISTANCE_THRESHOLDS))}>{formatDistance(avgDist!)}</div>
+                          </div>
                         ) : <span className="text-muted-foreground">-</span>}
                       </td>
                     )
@@ -285,14 +309,18 @@ export function Tab3_CommuteComparison() {
         <div className="px-6 pb-4">
           <Separator className="mb-3" />
           <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
-            <Medal className="w-4 h-4 text-amber-500" /> 排行榜 · {TRAVEL_MODES.find((m) => m.key === displayMode)?.label} · {metricType === "duration" ? "时间" : "距离"}
+            <Medal className="w-4 h-4 text-amber-500" /> 排行榜 · 最快方案
           </h3>
           <div className="flex gap-2">
-            {rankings.map((item, i) => (
-              <div key={item.candidateId}
+            {rankings.map((item, i) => {
+              const cand = geocodedCandidates.find((c) => c.id === item.candidateId)!
+              const isActive = activeRouteCand === item.candidateId
+              return (
+              <div key={item.candidateId} onClick={() => handleRankingClick(cand)}
                 className={cn(
-                  "flex-1 rounded-lg border px-3 py-2.5 transition-all",
-                  i === 0 ? "border-amber-500/40 bg-amber-50/30" : "border-border bg-card"
+                  "flex-1 rounded-lg border px-3 py-2.5 transition-all cursor-pointer",
+                  isActive ? "border-primary bg-accent/40" :
+                  i === 0 ? "border-amber-500/40 bg-amber-50/30" : "border-border bg-card hover:border-primary/30"
                 )}
               >
                 <div className="flex items-center gap-1.5 mb-1">
@@ -314,7 +342,7 @@ export function Tab3_CommuteComparison() {
                   </div>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       )}

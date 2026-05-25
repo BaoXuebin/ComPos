@@ -39,6 +39,7 @@ export const api = {
   clearCommutes: () => request<{ success: boolean }>("/commutes", { method: "DELETE" }),
 
   getAnalysis: () => request<AnalysisResult | null>("/analysis"),
+  clearAnalysis: () => request<{ success: boolean }>("/analysis", { method: "DELETE" }),
 
   getMapSDKUrl: () => request<{ url: string; securityJsCode: string }>("/map-sdk-url"),
   getSettings: () => request<AppSettings>("/settings"),

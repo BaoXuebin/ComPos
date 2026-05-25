@@ -1,8 +1,25 @@
 services:
-  app:
-    build: .
+  projbot:
+    container_name: compos
+    image: registry.cn-qingdao.aliyuncs.com/xdbin/compos:${IMAGE_TAG:-latest}
     ports:
       - "80:80"
+    environment:
+      - NODE_ENV=production
     volumes:
-      - ./backend/data:/app/data
+      - ./data:/app/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/system"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M

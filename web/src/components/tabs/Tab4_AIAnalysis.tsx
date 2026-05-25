@@ -3,19 +3,21 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useEmployees } from "@/hooks/useEmployees"
 import { useCandidates } from "@/hooks/useCandidates"
 import { useCommutes } from "@/hooks/useCommutes"
-import { useAnalysis } from "@/hooks/useAnalysis"
+import { useAnalysis, useClearAnalysis } from "@/hooks/useAnalysis"
 import { getSocket } from "@/lib/socket"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
-import type { CommuteEntry } from "@/types"
-import { Sparkles, Copy, Loader2, ChevronDown, ChevronUp, ExternalLink } from "lucide-react"
+import { TRAVEL_MODES, type CommuteEntry, type TravelMode } from "@/types"
+import { showCandidateRoutes, clearRouteOverlays } from "@/components/map/MapContainer"
+import { Sparkles, Copy, Loader2, ChevronDown, ChevronUp, ExternalLink, Trash2 } from "lucide-react"
 
 export function Tab4_AIAnalysis() {
   const { data: employees = [] } = useEmployees()
   const { data: candidates = [] } = useCandidates()
   const { data: commutes = {} as Record<string, CommuteEntry> } = useCommutes()
   const { data: analysis } = useAnalysis()
+  const clearAnalysisMutation = useClearAnalysis()
   const qc = useQueryClient()
 
   const [streaming, setStreaming] = useState(false)
@@ -23,6 +25,7 @@ export function Tab4_AIAnalysis() {
   const [content, setContent] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [reasoningCollapsed, setReasoningCollapsed] = useState(false)
+  const [activeRouteCand, setActiveRouteCand] = useState<string | null>(null)
   const reasoningRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = useCallback(() => {
@@ -65,8 +68,42 @@ export function Tab4_AIAnalysis() {
     navigator.clipboard.writeText(analysis?.reasoning || content)
   }
 
+  const geocodedEmployees = employees.filter((e) => e.geocoded)
   const geocodedCandidates = candidates.filter((c) => c.geocoded)
   const hasCommutes = Object.keys(commutes).length > 0
+
+  function getBestMode(employeeId: string, candidateId: string): TravelMode | null {
+    const entry = commutes[`${employeeId}_${candidateId}`]
+    if (!entry) return null
+    let best: TravelMode | null = null
+    let bestDur = Infinity
+    for (const m of TRAVEL_MODES) {
+      const r = entry[m.key]
+      if (r?.duration && r?.distance && !r.error && r.duration < bestDur) {
+        bestDur = r.duration
+        best = m.key
+      }
+    }
+    return best
+  }
+
+  const handleScoreClick = (candidateId: string) => {
+    if (activeRouteCand === candidateId) {
+      clearRouteOverlays()
+      setActiveRouteCand(null)
+      return
+    }
+    const cand = geocodedCandidates.find((c) => c.id === candidateId)
+    if (!cand?.lng || !cand?.lat) return
+    const trips = geocodedEmployees
+      .filter((emp) => emp.lng && emp.lat)
+      .map((emp) => {
+        const mode = getBestMode(emp.id, candidateId) || "driving"
+        return { lng: emp.lng!, lat: emp.lat!, bestMode: mode }
+      })
+    showCandidateRoutes(cand.lng, cand.lat, trips)
+    setActiveRouteCand(candidateId)
+  }
 
   const bestCandidateId = analysis
     ? Object.entries(analysis.scores).sort((a, b) => b[1].score - a[1].score)[0]?.[0]
@@ -95,6 +132,11 @@ export function Tab4_AIAnalysis() {
         {analysis && (
           <Button onClick={handleCopy} variant="ghost" size="sm" className="h-8 text-xs">
             <Copy className="w-3.5 h-3.5 mr-1" /> 复制报告
+          </Button>
+        )}
+        {analysis && (
+          <Button onClick={() => clearAnalysisMutation.mutate()} variant="ghost" size="sm" className="h-8 text-xs text-destructive hover:text-destructive">
+            <Trash2 className="w-3.5 h-3.5 mr-1" /> 清除分析
           </Button>
         )}
         {!hasCommutes && !streaming && (
@@ -151,11 +193,13 @@ export function Tab4_AIAnalysis() {
               .map(([candId, { score, summary }]) => {
                 const cand = geocodedCandidates.find((c) => c.id === candId)
                 const isBest = candId === bestCandidateId
+                const isActive = activeRouteCand === candId
                 return (
-                  <div key={candId}
+                  <div key={candId} onClick={() => handleScoreClick(candId)}
                     className={cn(
-                      "flex-1 rounded-lg border px-3 py-3 transition-all",
-                      isBest ? "border-primary/40 bg-accent/50" : "border-border bg-card"
+                      "flex-1 rounded-lg border px-3 py-3 transition-all cursor-pointer",
+                      isActive ? "border-primary bg-accent/40" :
+                      isBest ? "border-primary/40 bg-accent/50" : "border-border bg-card hover:border-primary/30"
                     )}
                   >
                     <div className="flex items-center gap-1.5 mb-1.5">

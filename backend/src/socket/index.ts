@@ -24,7 +24,7 @@ export function setupSocketIO(httpServer: HTTPServer) {
     logger.info("Client connected", { id: socket.id })
 
     // ========== Commute Calculation ==========
-    socket.on("commute:calculate", async ({ modes }: { modes: TravelMode[] }) => {
+    socket.on("commute:calculate", async () => {
       const roomId = socket.id
       abortFlags.set(roomId, false)
 
@@ -36,13 +36,13 @@ export function setupSocketIO(httpServer: HTTPServer) {
         return
       }
 
-      // Build work items (per-employee modes × global mode filter)
+      const ALL_MODES: TravelMode[] = ["driving", "transit", "walking", "cycling"]
+
       const items: any[] = []
       for (const emp of employees) {
-        const empModes: TravelMode[] = emp.modes?.length ? emp.modes : modes
-        const effectiveModes = modes.filter((m) => empModes.includes(m))
+        const empModes = emp.modes?.length ? emp.modes : ALL_MODES
         for (const cand of candidates) {
-          for (const mode of effectiveModes) {
+          for (const mode of empModes) {
             const key = `${emp.id}_${cand.id}`
             const existing = getCommutes()[key]
             if (existing?.[mode] && !existing[mode]?.error) continue
@@ -64,7 +64,7 @@ export function setupSocketIO(httpServer: HTTPServer) {
 
       socket.emit("commute:progress", { completed: 0, total: items.length, failed: 0 })
 
-      logger.info("Starting commute calculation", { totalItems: items.length, modes })
+      logger.info("Starting commute calculation", { totalItems: items.length })
 
       // Track failed count for final event
       let totalFailed = 0

@@ -8,6 +8,47 @@ import { cn } from "@/lib/utils"
 let mapInstance: any = null
 let markersCache: any[] = []
 
+let routeSearchers: any[] = []
+
+export function clearRouteOverlays() {
+  routeSearchers.forEach((s) => { try { s.clear() } catch { /* ignore */ } })
+  routeSearchers = []
+}
+
+export function showCandidateRoutes(
+  candidateLng: number,
+  candidateLat: number,
+  trips: { lng: number; lat: number; bestMode: string }[]
+) {
+  if (!mapInstance || !isAmapLoaded()) return
+  clearRouteOverlays()
+
+  const dest = new window.AMap.LngLat(candidateLng, candidateLat)
+  trips.forEach((trip) => {
+    const origin = new window.AMap.LngLat(trip.lng, trip.lat)
+    let searcher: any = null
+    switch (trip.bestMode) {
+      case "driving":
+        searcher = new window.AMap.Driving({ map: mapInstance })
+        break
+      case "transit":
+        searcher = new window.AMap.Transit({ map: mapInstance, city: "郑州" })
+        break
+      case "walking":
+        searcher = new window.AMap.Walking({ map: mapInstance })
+        break
+      case "cycling":
+        searcher = new window.AMap.Riding({ map: mapInstance })
+        break
+    }
+    if (searcher) {
+      searcher.search(origin, dest)
+      routeSearchers.push(searcher)
+    }
+  })
+  mapInstance.setFitView(null, false, [120, 80, 120, 80])
+}
+
 export function clearMapMarkers() {
   if (mapInstance) {
     markersCache.forEach((m) => mapInstance.remove(m))
@@ -28,7 +69,7 @@ function addMarker(map: any, lng: number, lat: number, label: string, color: str
   return marker
 }
 
-export function MapContainer({ visible }: { visible: boolean }) {
+export function MapContainer({ visible, filter = "employees" }: { visible: boolean; filter?: "employees" | "candidates" | "commute" | "analysis" }) {
   const mapRef = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
   const { data: employees } = useEmployees()
@@ -77,16 +118,23 @@ export function MapContainer({ visible }: { visible: boolean }) {
     if (!mapInstance || !ready) return
 
     clearMapMarkers()
+    let hasMarkers = false
 
-    employees?.filter((e) => e.geocoded && e.lng && e.lat).forEach((e) => {
-      addMarker(mapInstance, e.lng!, e.lat!, e.name, "#3b82f6")
-    })
+    if (filter !== "candidates") {
+      employees?.filter((e) => e.geocoded && e.lng && e.lat).forEach((e) => {
+        addMarker(mapInstance, e.lng!, e.lat!, e.name, "#3b82f6")
+        hasMarkers = true
+      })
+    }
 
-    candidates?.filter((c) => c.geocoded && c.lng && c.lat).forEach((c) => {
-      addMarker(mapInstance, c.lng!, c.lat!, c.name, "#6366f1")
-    })
+    if (filter !== "employees") {
+      candidates?.filter((c) => c.geocoded && c.lng && c.lat).forEach((c) => {
+        addMarker(mapInstance, c.lng!, c.lat!, c.name, "#6366f1")
+        hasMarkers = true
+      })
+    }
 
-    if (analysis?.recommendedArea) {
+    if (filter === "analysis" && analysis?.recommendedArea) {
       const area = analysis.recommendedArea
       const circle = new window.AMap.Circle({
         center: new window.AMap.LngLat(area.center[0], area.center[1]),
@@ -109,10 +157,13 @@ export function MapContainer({ visible }: { visible: boolean }) {
       })
       label.setMap(mapInstance)
       markersCache.push(label)
+      hasMarkers = true
+    }
 
+    if (hasMarkers) {
       mapInstance.setFitView(null, false, [80, 80, 80, 80])
     }
-  }, [employees, candidates, analysis, ready])
+  }, [employees, candidates, analysis, ready, filter])
 
   // Resize handler
   useEffect(() => {
@@ -143,13 +194,12 @@ export function getMapInstance() {
 
 export function locateOnMap(lng: number, lat: number) {
   if (!mapInstance) return
-  mapInstance.setZoomAndCenter(15, [lng, lat])
+  mapInstance.setCenter([lng, lat])
 }
 
 export function showRoutesOnMap(
   origin: { lng: number; lat: number; label: string },
-  destination: { lng: number; lat: number; label: string },
-  _mode: string
+  destination: { lng: number; lat: number; label: string }
 ) {
   if (!mapInstance || !isAmapLoaded()) return
 
