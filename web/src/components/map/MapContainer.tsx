@@ -36,6 +36,7 @@ export function MapContainer({ visible }: { visible: boolean }) {
   const { data: settings } = useQuery({
     queryKey: ["settings"],
     queryFn: api.getSettings,
+    staleTime: 0,
     initialData: { amapKey: "", amapSecurityCode: "", amapServiceKey: "", deepseekApiKey: "" },
   })
   const { data: employees } = useEmployees()
