@@ -1,7 +1,7 @@
 import { Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-const APP_VERSION = "v0.3.1"
+const APP_VERSION = "v0.3.2"
 
 export function AppHeader({ onOpenSettings }: { onOpenSettings: () => void }) {
   return (

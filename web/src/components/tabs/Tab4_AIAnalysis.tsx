@@ -231,7 +231,7 @@ export function Tab4_AIAnalysis() {
         <div className="px-6 pb-4 space-y-3 overflow-auto">
           <Separator />
           <h3 className="text-sm font-semibold text-foreground">评分结果</h3>
-          <div className="flex gap-2">
+          <div className="flex gap-2 overflow-x-auto">
             {Object.entries(analysis.scores)
               .sort((a, b) => b[1].score - a[1].score)
               .map(([candId, { score, summary }]) => {
@@ -241,14 +241,14 @@ export function Tab4_AIAnalysis() {
                 return (
                   <div key={candId} onClick={() => handleScoreClick(candId)}
                     className={cn(
-                      "flex-1 rounded-lg border px-3 py-3 transition-all cursor-pointer",
+                      "w-[240px] shrink-0 rounded-lg border px-3 py-3 transition-all cursor-pointer",
                       isActive ? "border-primary bg-accent/40" :
                       isBest ? "border-primary/40 bg-accent/50" : "border-border bg-card hover:border-primary/30"
                     )}
                   >
                     <div className="flex items-center gap-1.5 mb-1.5">
                       {isBest && <span className="text-sm">⭐</span>}
-                      <span className="text-sm font-medium text-foreground">{cand?.name || candId}</span>
+                      <span className="text-sm font-medium text-foreground max-w-[140px] truncate">{cand?.name || candId}</span>
                       {isBest && <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-accent text-primary border border-primary/20">推荐</span>}
                     </div>
                     <div className="text-2xl font-bold text-primary mb-1 font-mono">{score.toFixed(1)}</div>

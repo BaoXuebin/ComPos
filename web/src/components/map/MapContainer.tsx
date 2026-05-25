@@ -149,16 +149,6 @@ export function MapContainer({ visible, filter = "employees" }: { visible: boole
       })
       circle.setMap(mapInstance)
       markersCache.push(circle)
-
-      const label = new window.AMap.Marker({
-        position: new window.AMap.LngLat(area.center[0], area.center[1]),
-        label: {
-          content: `<div style="background:rgba(139,92,246,0.9);color:#fff;padding:4px 12px;border-radius:6px;font-size:13px;box-shadow:0 0 16px rgba(139,92,246,0.4)">推荐: ${area.description}</div>`,
-          direction: "center",
-        },
-      })
-      label.setMap(mapInstance)
-      markersCache.push(label)
       hasMarkers = true
     }
 

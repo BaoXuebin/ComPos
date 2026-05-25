@@ -311,21 +311,21 @@ export function Tab3_CommuteComparison() {
           <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
             <Medal className="w-4 h-4 text-amber-500" /> 排行榜 · 最快方案
           </h3>
-          <div className="flex gap-2">
+          <div className="flex gap-2 overflow-x-auto">
             {rankings.map((item, i) => {
               const cand = geocodedCandidates.find((c) => c.id === item.candidateId)!
               const isActive = activeRouteCand === item.candidateId
               return (
               <div key={item.candidateId} onClick={() => handleRankingClick(cand)}
                 className={cn(
-                  "flex-1 rounded-lg border px-3 py-2.5 transition-all cursor-pointer",
+                  "w-[240px] shrink-0 rounded-lg border px-3 py-2.5 transition-all cursor-pointer",
                   isActive ? "border-primary bg-accent/40" :
                   i === 0 ? "border-amber-500/40 bg-amber-50/30" : "border-border bg-card hover:border-primary/30"
                 )}
               >
                 <div className="flex items-center gap-1.5 mb-1">
                   <span className="text-sm">{getMedalEmoji(i)}</span>
-                  <span className="text-sm font-medium text-foreground">{item.name}</span>
+                  <span className="text-sm font-medium text-foreground max-w-[140px] truncate">{item.name}</span>
                 </div>
                 <div className="space-y-0.5">
                   <div className="flex justify-between text-xs">

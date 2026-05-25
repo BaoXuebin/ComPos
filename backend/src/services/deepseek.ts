@@ -62,17 +62,38 @@ export async function streamDeepSeekAnalysis(
   const data = buildPrompt(employees, candidates, commutes)
   let fullContent = ""
 
-  const defaultPrompt = `你是一位专业的办公选址分析师。请根据员工家庭地址、候选办公地点的通勤数据和租金进行评估：
+  const defaultPrompt = `你是一位专业的办公选址分析师。请根据提供的员工通勤数据和候选地点租金进行综合评估。
 
-1. 逐一评估每个候选地点的通勤便捷度和租金性价比
-2. 从1-10分给每个候选地点打分（综合考虑通勤便利度和租金成本）
-3. 推荐最优办公选址地理区域（中心坐标+搜索半径）
+## 数据说明
+- avgDur：平均通勤耗时（分钟），取所有员工在该出行方式下的平均值
+- avgDist：平均通勤距离（米）
+- coverage：覆盖比例，如 3/5 表示 5 名员工中有 3 名可通过该方式到达
+- rent：月租金（元），null 表示未填写
 
-最后用JSON格式输出：
+## 评分标准（1-10分）
+- 通勤权重占 70%，租金权重占 30%
+- 通勤评估：以驾车和公交为主要参考，步行和骑行为辅助
+  - 驾车平均耗时 <20分钟 为优秀，<40分钟 为良好，>60分钟 为较差
+  - 公交覆盖率越高越好，耗时越短越好
+- 租金评估：结合通勤便利度判断性价比
+  - 通勤便利但租金过高，适当扣分
+  - 通勤一般但租金低廉，适当加分
+- 评分应有区分度，不要所有候选地点都给相近分数
+
+## 推荐区域
+- center：推荐选址的地理中心坐标 [lng, lat]，应综合考虑评分最高的1-2个候选地点位置
+- radius：搜索半径（米），建议 2000-5000
+- description：简要说明推荐理由，提及通勤优势和租金因素
+- overlayType：固定为 "circle"
+
+## 输出要求
+- summary 用简洁的1-2句话评价，包含关键数据（如最短通勤时间、租金等）
+- 严格使用以下JSON格式，key 必须使用候选地点的 id 字段
+- 只输出JSON，不要输出其他内容
+
 \`\`\`json
-{"scores":{"candidateId":{"score":8.5,"summary":"评价"}},"recommendedArea":{"center":[lng,lat],"radius":3000,"description":"推荐理由","overlayType":"circle"}}
-\`\`\`
-仅输出JSON。`
+{"scores":{"candidateId":{"score":8.5,"summary":"驾车平均25分钟，公交覆盖4/5，租金适中，综合性价比高"}},"recommendedArea":{"center":[113.65,34.76],"radius":3000,"description":"该区域靠近评分最高的XX，驾车通勤便利，周边公交线路密集","overlayType":"circle"}}
+\`\`\``
 
   const systemPrompt = settings.analysisPrompt?.trim() || defaultPrompt
 
