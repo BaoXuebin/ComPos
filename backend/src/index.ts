@@ -10,6 +10,7 @@ import { geocodeRouter } from "./routes/geocode.js"
 import { commutesRouter } from "./routes/commutes.js"
 import { analysisRouter } from "./routes/analysis.js"
 import { settingsRouter } from "./routes/settings.js"
+import { mapConfigRouter } from "./routes/mapConfig.js"
 import { setupSocketIO } from "./socket/index.js"
 
 const app = express()
@@ -26,6 +27,7 @@ app.use("/api/geocode", geocodeRouter)
 app.use("/api/commutes", commutesRouter)
 app.use("/api/analysis", analysisRouter)
 app.use("/api/settings", settingsRouter)
+app.use("/api/map-sdk-url", mapConfigRouter)
 
 // Health check
 app.get("/api/health", (_req, res) => {

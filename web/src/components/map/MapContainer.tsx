@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from "react"
 import { useEmployees } from "@/hooks/useEmployees"
 import { useCandidates } from "@/hooks/useCandidates"
 import { useAnalysis } from "@/hooks/useAnalysis"
-import { useQuery } from "@tanstack/react-query"
-import { api } from "@/lib/api"
 import { loadAmapSDK, isAmapLoaded } from "@/lib/amap"
 import { cn } from "@/lib/utils"
 
@@ -33,23 +31,16 @@ function addMarker(map: any, lng: number, lat: number, label: string, color: str
 export function MapContainer({ visible }: { visible: boolean }) {
   const mapRef = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
-  const { data: settings } = useQuery({
-    queryKey: ["settings"],
-    queryFn: api.getSettings,
-    staleTime: 0,
-    initialData: { amapKey: "", amapSecurityCode: "", amapServiceKey: "", deepseekApiKey: "" },
-  })
   const { data: employees } = useEmployees()
   const { data: candidates } = useCandidates()
   const { data: analysis } = useAnalysis()
 
   // Load AMap SDK
   useEffect(() => {
-    if (!visible || !settings?.amapKey) return
+    if (!visible) return
     if (isAmapLoaded()) return
-
-    loadAmapSDK(settings.amapKey, settings.amapSecurityCode).catch(() => {})
-  }, [visible, settings?.amapKey, settings?.amapSecurityCode])
+    loadAmapSDK().catch(() => {})
+  }, [visible])
 
   // Create map instance once
   useEffect(() => {

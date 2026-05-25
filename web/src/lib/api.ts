@@ -40,6 +40,7 @@ export const api = {
 
   getAnalysis: () => request<AnalysisResult | null>("/analysis"),
 
+  getMapSDKUrl: () => request<{ url: string; securityJsCode: string }>("/map-sdk-url"),
   getSettings: () => request<AppSettings>("/settings"),
   updateSettings: (data: Partial<AppSettings>) =>
     request<AppSettings>("/settings", { method: "PUT", body: JSON.stringify(data) }),

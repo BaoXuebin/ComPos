@@ -15,7 +15,7 @@ import { loadAmapSDK } from "@/lib/amap"
 
 function maskKey(key: string): string {
   if (!key) return "未配置"
-  if (key.length <= 8) return key.slice(0, 2) + "***" + key.slice(-2)
+  if (key === "***configured***") return "已配置"
   return key.slice(0, 4) + "****" + key.slice(-4)
 }
 
@@ -51,9 +51,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     setSaveResult(null)
     try {
       await updateMutation.mutateAsync(local)
-      if (local.amapKey) {
-        await loadAmapSDK(local.amapKey, local.amapSecurityCode)
-      }
+      try { await loadAmapSDK() } catch { /* key not configured */ }
       setSaveResult("success")
       setEditing(false)
     } catch {

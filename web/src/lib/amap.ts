@@ -1,3 +1,5 @@
+import { api } from "./api"
+
 declare global {
   interface Window {
     _AMapSecurityConfig: { securityJsCode: string }
@@ -8,42 +10,27 @@ declare global {
 let amapLoaded = false
 let amapLoadPromise: Promise<void> | null = null
 
-export function loadAmapSDK(key: string, securityCode: string): Promise<void> {
+export function loadAmapSDK(): Promise<void> {
   if (amapLoaded) return Promise.resolve()
   if (amapLoadPromise) return amapLoadPromise
 
-  amapLoadPromise = new Promise((resolve, reject) => {
+  amapLoadPromise = (async () => {
     if (window.AMap) {
       amapLoaded = true
-      resolve()
       return
     }
 
-    window._AMapSecurityConfig = { securityJsCode: securityCode }
+    const { url, securityJsCode } = await api.getMapSDKUrl()
+    window._AMapSecurityConfig = { securityJsCode }
 
-    const script = document.createElement("script")
-    const plugins = [
-      "AMap.Geocoder",
-      "AMap.Driving",
-      "AMap.Transit",
-      "AMap.Walking",
-      "AMap.Riding",
-      "AMap.Polygon",
-      "AMap.Circle",
-      "AMap.Marker",
-      "AMap.Polyline",
-    ]
-    script.src = `https://webapi.amap.com/maps?v=2.0&key=${key}&plugin=${plugins.join(",")}`
-    script.onload = () => {
-      amapLoaded = true
-      resolve()
-    }
-    script.onerror = () => {
-      amapLoadPromise = null
-      reject(new Error("高德地图 SDK 加载失败"))
-    }
-    document.head.appendChild(script)
-  })
+    return new Promise<void>((resolve, reject) => {
+      const script = document.createElement("script")
+      script.src = url
+      script.onload = () => { amapLoaded = true; resolve() }
+      script.onerror = () => { amapLoadPromise = null; reject(new Error("高德地图 SDK 加载失败")) }
+      document.head.appendChild(script)
+    })
+  })()
 
   return amapLoadPromise
 }
